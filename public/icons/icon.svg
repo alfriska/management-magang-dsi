@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8b5cf6"/>
+      <stop offset="100%" style="stop-color:#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a78bfa"/>
+      <stop offset="100%" style="stop-color:#8b5cf6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="100" fill="url(#bgGrad)"/>
+
+  <!-- Graduation Cap Icon -->
+  <g transform="translate(256, 256)">
+    <!-- Cap base (mortarboard) -->
+    <path d="M-140 20 L0 -60 L140 20 L0 60 Z" fill="white" opacity="0.95"/>
+
+    <!-- Cap top -->
+    <ellipse cx="0" cy="-20" rx="70" ry="25" fill="white"/>
+
+    <!-- Tassel holder -->
+    <rect x="-8" y="-45" width="16" height="25" rx="4" fill="url(#accentGrad)"/>
+
+    <!-- Tassel string -->
+    <path d="M0 -20 Q60 10, 80 80" stroke="#fbbf24" stroke-width="6" fill="none" stroke-linecap="round"/>
+
+    <!-- Tassel end -->
+    <circle cx="80" cy="85" r="12" fill="#fbbf24"/>
+    <rect x="74" y="85" width="12" height="30" rx="3" fill="#fbbf24"/>
+
+    <!-- Book/Document underneath -->
+    <rect x="-50" y="50" width="100" height="70" rx="8" fill="white" opacity="0.25"/>
+    <rect x="-40" y="60" width="80" height="6" rx="3" fill="white" opacity="0.4"/>
+    <rect x="-40" y="74" width="60" height="6" rx="3" fill="white" opacity="0.4"/>
+    <rect x="-40" y="88" width="70" height="6" rx="3" fill="white" opacity="0.4"/>
+  </g>
+</svg>

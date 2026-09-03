@@ -1,0 +1,285 @@
+
+/* Mobile-First Table Improvements */
+@media (max-width: 768px) {
+    /* Table horizontal scroll with shadow indicator */
+    .table-container {
+        @apply relative;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table-container::after {
+        content: "";
+        @apply absolute right-0 top-0 h-full w-8 pointer-events-none z-10;
+        background: linear-gradient(
+            to left,
+            rgba(255, 255, 255, 0.9),
+            transparent
+        );
+    }
+
+    table {
+        @apply min-w-[600px];
+    }
+
+    th,
+    td {
+        @apply px-3 py-2.5 text-[12px];
+    }
+
+    th {
+        @apply text-[9px];
+    }
+
+    /* Smaller buttons on mobile */
+    .btn {
+        @apply px-3 py-2 text-[11px];
+    }
+
+    .btn-sm {
+        @apply px-2 py-1.5 text-[10px];
+    }
+
+    /* Action buttons wrap on mobile */
+    td .flex.gap-1\.5,
+    td .d-flex.gap-2 {
+        @apply flex-wrap gap-1;
+    }
+
+    /* Compact stat grid on mobile */
+    .stat-grid {
+        @apply grid-cols-2 gap-3;
+    }
+
+    .stat-card {
+        @apply p-4;
+    }
+
+    .stat-icon {
+        @apply w-10 h-10 text-lg mb-2;
+    }
+
+    .stat-value {
+        @apply text-xl;
+    }
+
+    .stat-label {
+        @apply text-[10px];
+    }
+
+    /* Filter bar improvements */
+    .filter-bar {
+        @apply gap-2;
+    }
+
+    .filter-group {
+        @apply min-w-[120px] flex-[unset] w-full;
+    }
+
+    .filter-group:not(:has(input[type="text"])) {
+        @apply w-[calc(50%-4px)];
+    }
+
+    /* Chart containers */
+    .chart-container {
+        @apply h-48;
+    }
+
+    /* Card header mobile */
+    .card-header {
+        @apply flex-col gap-3 items-start;
+    }
+
+    .card-header .btn {
+        @apply w-full justify-center;
+    }
+
+    /* Grid adjustments */
+    .grid-2,
+    .grid-3 {
+        @apply grid-cols-1 gap-4;
+    }
+
+    /* Header title smaller */
+    .header-title {
+        @apply text-base;
+    }
+
+    /* Bulk action bar */
+    .bulk-action-bar {
+        @apply flex-col gap-2 text-center;
+    }
+
+    .bulk-action-bar .flex.gap-2 {
+        @apply w-full justify-center flex-wrap;
+    }
+
+    .bulk-action-bar select {
+        @apply w-full max-w-none;
+    }
+
+    /* User avatar smaller on mobile */
+    .user-avatar {
+        @apply w-7 h-7 text-[10px];
+    }
+
+    /* Empty state compact */
+    .empty-state {
+        @apply py-8;
+    }
+
+    .empty-state-icon {
+        @apply w-14 h-14 text-xl;
+    }
+
+    /* page title section mobile */
+    .d-flex.justify-between {
+        @apply flex-col gap-4 items-stretch;
+    }
+
+    .d-flex.justify-between > div:first-child h2 {
+        @apply text-lg;
+    }
+
+    .d-flex.justify-between > div:last-child,
+    .d-flex.justify-between > a {
+        @apply w-full;
+    }
+
+    .d-flex.justify-between > div:last-child .btn,
+    .d-flex.justify-between > a.btn {
+        @apply w-full justify-center;
+    }
+
+    /* Task assignment cards */
+    .task-assignments-grid {
+        @apply grid-cols-1;
+    }
+
+    .task-assignment-card {
+        @apply p-4;
+    }
+
+    .assignment-stats {
+        @apply grid-cols-2 gap-2;
+    }
+
+    .assignment-title {
+        @apply text-base;
+    }
+}
+
+/* Very small screens */
+@media (max-width: 480px) {
+    .content {
+        @apply p-3;
+    }
+
+    .header {
+        @apply mx-2 mt-2 px-3 py-2 rounded-xl;
+    }
+
+    .header-title {
+        @apply text-sm;
+    }
+
+    .card {
+        @apply p-3 rounded-xl;
+    }
+
+    /* Stat grid 2x2 */
+    .stat-grid {
+        @apply gap-2;
+    }
+
+    .stat-card {
+        @apply p-3 rounded-xl;
+    }
+
+    .stat-icon {
+        @apply w-9 h-9 text-base mb-1.5 rounded-lg;
+    }
+
+    .stat-value {
+        @apply text-lg;
+    }
+
+    /* Table minimum width for very small screens */
+    table {
+        @apply min-w-[500px];
+    }
+
+    /* Filter bar stack all */
+    .filter-bar {
+        @apply flex-col gap-2;
+    }
+
+    .filter-group {
+        @apply w-full min-w-0;
+    }
+
+    /* Page header buttons stack */
+    .flex.gap-2 {
+        @apply w-full;
+    }
+
+    .flex.gap-2 > .btn,
+    .flex.gap-2 > .dropdown {
+        @apply flex-1;
+    }
+
+    .flex.gap-2 > .dropdown > .btn {
+        @apply w-full;
+    }
+
+    /* Badge smaller */
+    .badge {
+        @apply px-2 py-0.5 text-[9px];
+    }
+
+    /* Action buttons icon only on very small */
+    td .btn-sm span {
+        @apply hidden;
+    }
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) {
+    .btn {
+        @apply min-h-[44px];
+    }
+
+    .btn-sm {
+        @apply min-h-[36px] min-w-[36px];
+    }
+
+    .form-control {
+        @apply min-h-[44px];
+    }
+
+    select.form-control {
+        @apply min-h-[44px];
+    }
+
+    .nav-link {
+        @apply py-3;
+    }
+
+    .form-checkbox {
+        @apply w-5 h-5;
+    }
+}
+
+/* Landscape mobile optimization */
+@media (max-height: 500px) and (orientation: landscape) {
+    .sidebar {
+        @apply overflow-y-auto;
+    }
+
+    .header {
+        @apply py-2;
+    }
+
+    .content {
+        @apply py-3;
+    }
+}

@@ -13,6 +13,7 @@
   <a href="#-requirements">Requirements</a> •
   <a href="#-installation">Installation</a> •
   <a href="#-development">Development</a> •
+  <a href="#-whatsapp-reminder-setup">WhatsApp Reminder</a> •
   <a href="#-testing">Testing</a>
 </p>
 
@@ -24,8 +25,11 @@
 - 📊 **Assessment System** - Track and evaluate intern performance
 - 📅 **Attendance Tracking** - Monitor intern attendance records
 - 📝 **Task Management** - Assign and track intern tasks
+- 📆 **Calendar** - Unified calendar view for Attendance and Tasks, with linked Daily Report status per date
+- 📓 **Daily Report** - Interns log daily activity (description, photo attachment, target completion date, progress status); Admin/Pembimbing get a monitoring dashboard with donut-chart summary and per-instansi filtering
 - 📑 **Report Generation** - Generate PDF reports and certificates
 - 🔔 **Notifications** - Email notifications for task assignments and reminders
+- 📲 **WhatsApp Reminder** - Automated WhatsApp reminders (via Fonnte) for interns who haven't filled their Daily Report by the cutoff time
 - 👨‍💼 **Supervisor Management** - Manage supervisors and their assigned interns
 
 ---
@@ -54,6 +58,9 @@ Before you begin, ensure you have the following installed:
 - Tokenizer
 - XML
 - GD / Imagick (for PDF generation)
+- **curl** (required for WhatsApp Reminder integration via Fonnte)
+
+> ⚠️ **Windows note:** if `WhatsAppService` throws `cURL error 60: SSL certificate ... unable to get local issuer certificate`, download [`cacert.pem`](https://curl.se/ca/cacert.pem) and set `curl.cainfo` / `openssl.cafile` in your `php.ini` to point to it, then restart your PHP process.
 
 ---
 
@@ -109,6 +116,10 @@ MAIL_USERNAME=your-email
 MAIL_PASSWORD=your-password
 MAIL_FROM_ADDRESS="no-reply@example.com"
 MAIL_FROM_NAME="${APP_NAME}"
+
+# WhatsApp Reminder (Fonnte) - see "WhatsApp Reminder Setup" section below
+WHATSAPP_API_URL=https://api.fonnte.com/send
+WHATSAPP_API_TOKEN=your_fonnte_device_token
 ```
 
 ### 5. Generate Application Key
@@ -154,7 +165,9 @@ composer dev
 This will start:
 - 🌐 **Laravel Server** at `http://localhost:8000`
 - ⚡ **Vite Dev Server** for hot module replacement
-- 📨 **Queue Worker** for background jobs
+- 📨 **Queue Worker** for background jobs (email notifications, WhatsApp reminder jobs)
+
+> Note: `composer dev` does **not** start the Laravel Scheduler. See [WhatsApp Reminder Setup](#-whatsapp-reminder-setup) below if you need scheduled reminders running locally.
 
 ### Manual Start
 
@@ -170,9 +183,14 @@ php artisan serve
 npm run dev
 ```
 
-**Terminal 3 - Queue Worker (for email notifications):**
+**Terminal 3 - Queue Worker (for email notifications & WhatsApp reminder jobs):**
 ```bash
 php artisan queue:listen
+```
+
+**Terminal 4 - Scheduler (only needed to trigger the WhatsApp reminder automatically, see below):**
+```bash
+php artisan schedule:work
 ```
 
 ### Building for Production
@@ -180,6 +198,66 @@ php artisan queue:listen
 ```bash
 npm run build
 ```
+
+---
+
+## 📲 WhatsApp Reminder Setup
+
+Interns who haven't filled their Daily Report get an automatic WhatsApp reminder via **[Fonnte](https://fonnte.com)** (an unofficial WhatsApp Web gateway).
+
+### 1. Create a Fonnte Device
+
+1. Register at [fonnte.com](https://fonnte.com)
+2. Dashboard → **Add Device** → scan the QR code with the WhatsApp number you want to send reminders from
+3. Leave **Chatbot**, **Personal**, and **Group** auto-reply toggles **Off** (we only send outbound messages via API, no auto-reply needed)
+4. Once the device status shows **connect**, open the **API** menu and copy the **Token**
+
+### 2. Configure `.env`
+
+```env
+WHATSAPP_API_URL=https://api.fonnte.com/send
+WHATSAPP_API_TOKEN=paste_your_token_here
+```
+
+### 3. Reminder Schedule
+
+Reminders run automatically via `daily-report:send-reminders`, scheduled in `routes/console.php`:
+
+| Day | Time (Asia/Jakarta) |
+|---|---|
+| Monday – Friday | 16:00 |
+| Saturday | 12:30 |
+| Sunday | No reminder sent |
+
+Only **active** interns without a Daily Report for the current date receive a reminder. Once a reminder is successfully sent for a given intern+date, it will not be sent again (tracked in `daily_report_reminders`).
+
+### 4. Running the Scheduler
+
+**In local development**, nothing triggers the schedule automatically — run this in a dedicated terminal while developing:
+
+```bash
+php artisan schedule:work
+```
+
+**In production**, register a single cron entry instead (do **not** use `schedule:work` in production):
+
+```bash
+* * * * * cd /path-to-project && php artisan schedule:run >> /dev/null 2>&1
+```
+
+A queue worker (`php artisan queue:work`, ideally managed by Supervisor) must also be running at all times for reminders to actually be dispatched, since sending happens asynchronously via the `SendDailyReportReminder` job.
+
+### 5. Manually Triggering a Reminder Run (Testing)
+
+```bash
+php artisan daily-report:send-reminders
+```
+
+### 6. Provider Notes / Troubleshooting
+
+- Fonnte (and similar unofficial gateways like Wablas) work by hijacking a WhatsApp Web session, **not** the official Meta Business API — occasional device **disconnects** are a known characteristic of this category of service, not a bug in this codebase.
+- Failed sends are logged with a clear reason in `daily_report_reminders.error_message` (e.g. empty phone number, device disconnected) and are automatically retried the next time the reminder job runs — the scheduler and command never crash on a failed send.
+- If you need to switch providers, all provider-specific logic is isolated in `app/Services/WhatsAppService.php` — only that file and the `.env` values need to change.
 
 ---
 
@@ -203,32 +281,36 @@ php artisan test
 
 ```
 ├── app/
-│   ├── Http/
-│   │   ├── Controllers/     # HTTP Controllers
-│   │   └── Livewire/        # Livewire Components
-│   ├── Models/              # Eloquent Models
-│   ├── Mail/                # Mailable Classes
-│   └── Services/            # Business Logic Services
+│ ├── Console/
+│ │ └── Commands/ # Artisan Commands (incl. daily-report:send-reminders)
+│ ├── Http/
+│ │ └── Controllers/ # HTTP Controllers (incl. DailyReportController)
+│ ├── Jobs/ # Queued Jobs (incl. SendDailyReportReminder)
+│ ├── Livewire/ # Livewire Components (incl. Calendar)
+│ ├── Models/ # Eloquent Models (incl. DailyReport, DailyReportReminder)
+│ ├── Mail/ # Mailable Classes
+│ └── Services/ # Business Logic Services (incl. WhatsAppService)
 ├── database/
-│   ├── factories/           # Model Factories
-│   ├── migrations/          # Database Migrations
-│   └── seeders/             # Database Seeders
+│ ├── factories/ # Model Factories
+│ ├── migrations/ # Database Migrations
+│ └── seeders/ # Database Seeders
 ├── public/
-│   └── templates/           # Import Templates (Excel)
+│ └── templates/ # Import Templates (Excel)
 ├── resources/
-│   ├── css/                 # Stylesheets
-│   ├── js/                  # JavaScript Files
-│   └── views/               # Blade Templates
-│       ├── components/      # Blade Components
-│       ├── livewire/        # Livewire Views
-│       └── layouts/         # Layout Templates
+│ ├── css/ # Stylesheets
+│ ├── js/ # JavaScript Files
+│ └── views/ # Blade Templates
+│ ├── components/ # Blade Components
+│ ├── daily-reports/ # Daily Report views (Intern log, detail, Admin/Pembimbing monitoring)
+│ ├── livewire/ # Livewire Views (incl. Calendar)
+│ └── layouts/ # Layout Templates
 ├── routes/
-│   ├── web.php              # Web Routes
-│   └── api.php              # API Routes
+│ ├── web.php # Web Routes
+│ ├── console.php # Scheduler definitions (incl. WhatsApp reminder schedule)
+│ └── api.php # API Routes
 └── storage/
-    └── app/public/          # Public File Storage
+└── app/public/ # Public File Storage (incl. daily_report_images/)
 ```
-
 ---
 
 ## 🔧 Configuration
@@ -251,34 +333,3 @@ The application uses multiple PDF libraries:
 ### Excel Import/Export
 
 Uses **Maatwebsite/Excel** for importing/exporting intern data. Templates are located in:
-```
-public/templates/
-```
-
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
-
-## 📝 License
-
-This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-
----
-
-## 👨‍💻 Development Team
-
-**Direktorat Sistem Informasi (DSI)**
-
----
-
-<p align="center">
-  Made with ❤️ using Laravel, Livewire, and TailwindCSS
-</p>

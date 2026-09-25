@@ -46,9 +46,10 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI', '/auth/google/callback'),
     ],
 
-    'fonnte' => [
-        'url' => env('WHATSAPP_API_URL'),
-        'token' => env('WHATSAPP_API_TOKEN'),
+    'whatsapp' => [
+    'url' => env('WHATSAPP_API_URL'),
+    'token' => env('WHATSAPP_API_TOKEN'),
+    'secret' => env('WHATSAPP_API_SECRET'),
     ],
 
 ];

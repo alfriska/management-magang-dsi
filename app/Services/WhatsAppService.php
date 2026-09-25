@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 class WhatsAppService
 {
     /**
-     * Kirim pesan WhatsApp lewat Fonnte.
+     * Kirim pesan WhatsApp lewat Wablas.
      *
      * @return array{success: bool, message: string}
      */
@@ -23,22 +23,26 @@ class WhatsAppService
             ];
         }
 
+        $token = config('services.whatsapp.token');
+        $secret = config('services.whatsapp.secret');
+        $authorization = $secret ? "{$token}.{$secret}" : $token;
+
         try {
             $response = Http::withHeaders([
-                'Authorization' => config('services.fonnte.token'),
-            ])->asForm()->post(config('services.fonnte.url'), [
-                'target' => $normalizedPhone,
+                'Authorization' => $authorization,
+            ])->asForm()->post(config('services.whatsapp.url'), [
+                'phone' => $normalizedPhone,
                 'message' => $message,
             ]);
 
-            if ($response->successful() && ($response->json('status') === true || $response->json('status') === 'true')) {
+            if ($response->successful() && $response->json('status') === true) {
                 return [
                     'success' => true,
                     'message' => 'Pesan berhasil dikirim.',
                 ];
             }
 
-            Log::warning('Fonnte WhatsApp gagal kirim', [
+            Log::warning('Wablas WhatsApp gagal kirim', [
                 'phone' => $normalizedPhone,
                 'response' => $response->body(),
             ]);
@@ -48,7 +52,7 @@ class WhatsAppService
                 'message' => 'Provider WhatsApp menolak permintaan: ' . $response->body(),
             ];
         } catch (\Throwable $e) {
-            Log::error('Fonnte WhatsApp exception', [
+            Log::error('Wablas WhatsApp exception', [
                 'phone' => $normalizedPhone,
                 'error' => $e->getMessage(),
             ]);
@@ -70,24 +74,20 @@ class WhatsAppService
             return null;
         }
 
-        // Buang semua karakter selain digit
         $digits = preg_replace('/\D/', '', $phone);
 
         if (empty($digits)) {
             return null;
         }
 
-        // 08xxxxxxxxx -> 628xxxxxxxxx
         if (str_starts_with($digits, '0')) {
             $digits = '62' . substr($digits, 1);
         }
 
-        // 8xxxxxxxxx (tanpa awalan) -> 628xxxxxxxxx
         if (!str_starts_with($digits, '62') && str_starts_with($digits, '8')) {
             $digits = '62' . $digits;
         }
 
-        // Validasi kasar: nomor Indonesia setelah normalisasi minimal 10 digit
         if (strlen($digits) < 10) {
             return null;
         }

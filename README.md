@@ -29,7 +29,7 @@
 - 📓 **Daily Report** - Interns log daily activity (description, photo attachment, target completion date, progress status); Admin/Pembimbing get a monitoring dashboard with donut-chart summary and per-instansi filtering
 - 📑 **Report Generation** - Generate PDF reports and certificates
 - 🔔 **Notifications** - Email notifications for task assignments and reminders
-- 📲 **WhatsApp Reminder** - Automated WhatsApp reminders (via Fonnte) for interns who haven't filled their Daily Report by the cutoff time
+- 📲 **WhatsApp Reminder** - Automated WhatsApp reminders (via Wablas) for interns who haven't filled their Daily Report by the cutoff time
 - 👨‍💼 **Supervisor Management** - Manage supervisors and their assigned interns
 
 ---
@@ -58,7 +58,7 @@ Before you begin, ensure you have the following installed:
 - Tokenizer
 - XML
 - GD / Imagick (for PDF generation)
-- **curl** (required for WhatsApp Reminder integration via Fonnte)
+- **curl** (required for WhatsApp Reminder integration via Wablas)
 
 > ⚠️ **Windows note:** if `WhatsAppService` throws `cURL error 60: SSL certificate ... unable to get local issuer certificate`, download [`cacert.pem`](https://curl.se/ca/cacert.pem) and set `curl.cainfo` / `openssl.cafile` in your `php.ini` to point to it, then restart your PHP process.
 
@@ -69,8 +69,8 @@ Before you begin, ensure you have the following installed:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/Management-Magang-DSI.git
-cd Management-Magang-DSI
+git clone https://github.com/alfriska/management-magang-dsi.git
+cd management-magang-dsi
 ```
 
 ### 2. Install PHP Dependencies
@@ -117,9 +117,10 @@ MAIL_PASSWORD=your-password
 MAIL_FROM_ADDRESS="no-reply@example.com"
 MAIL_FROM_NAME="${APP_NAME}"
 
-# WhatsApp Reminder (Fonnte) - see "WhatsApp Reminder Setup" section below
-WHATSAPP_API_URL=https://api.fonnte.com/send
-WHATSAPP_API_TOKEN=your_fonnte_device_token
+# WhatsApp Reminder (Wablas) - see "WhatsApp Reminder Setup" section below
+WHATSAPP_API_URL=https://your-region.wablas.com/api/send-message
+WHATSAPP_API_TOKEN=your_wablas_token
+WHATSAPP_API_SECRET=your_wablas_secret_key
 ```
 
 ### 5. Generate Application Key
@@ -203,21 +204,27 @@ npm run build
 
 ## 📲 WhatsApp Reminder Setup
 
-Interns who haven't filled their Daily Report get an automatic WhatsApp reminder via **[Fonnte](https://fonnte.com)** (an unofficial WhatsApp Web gateway).
+Interns who haven't filled their Daily Report get an automatic WhatsApp reminder via **[Wablas](https://wablas.com)** (an unofficial WhatsApp Web gateway).
 
-### 1. Create a Fonnte Device
+### 1. Create a Wablas Device
 
-1. Register at [fonnte.com](https://fonnte.com)
+1. Register at [wablas.com](https://wablas.com)
 2. Dashboard → **Add Device** → scan the QR code with the WhatsApp number you want to send reminders from
-3. Leave **Chatbot**, **Personal**, and **Group** auto-reply toggles **Off** (we only send outbound messages via API, no auto-reply needed)
-4. Once the device status shows **connect**, open the **API** menu and copy the **Token**
+3. Leave the auto-reply / chatbot-related settings (Get Incoming Message, Get Auto Reply From Webhook, Greeting Message, Buku Kas, etc.) **untouched / disabled** — this integration only sends outbound messages via API, no inbound handling is needed
+4. Once the device status shows **connected**, open **Device → Settings** and note down:
+   - **Domain / Base URL** — Wablas assigns each device to a specific regional server (e.g. `jkt.wablas.com`, `sby.wablas.com`). Use the exact domain shown for **your** device, not a generic one.
+   - **API Keys / Token**
+   - **Secret Key** — ⚠️ this is shown **only once**. Copy it immediately; if missed, you'll need to regenerate it.
 
 ### 2. Configure `.env`
 
 ```env
-WHATSAPP_API_URL=https://api.fonnte.com/send
+WHATSAPP_API_URL=https://your-region.wablas.com/api/send-message
 WHATSAPP_API_TOKEN=paste_your_token_here
+WHATSAPP_API_SECRET=paste_your_secret_key_here
 ```
+
+Replace `your-region.wablas.com` with the exact **Domain / Base URL** shown on your device's settings page (e.g. `jkt.wablas.com`).
 
 ### 3. Reminder Schedule
 
@@ -255,9 +262,11 @@ php artisan daily-report:send-reminders
 
 ### 6. Provider Notes / Troubleshooting
 
-- Fonnte (and similar unofficial gateways like Wablas) work by hijacking a WhatsApp Web session, **not** the official Meta Business API — occasional device **disconnects** are a known characteristic of this category of service, not a bug in this codebase.
+- Wablas (and similar unofficial gateways like Fonnte) work by hijacking a WhatsApp Web session, **not** the official Meta Business API — occasional device **disconnects** are a known characteristic of this category of service, not a bug in this codebase.
+- Wablas requires the `Authorization` header to be sent as `{token}.{secret_key}` (token and secret key joined with a dot) — this is already handled inside `WhatsAppService`.
+- Each Wablas device is hosted on a specific regional server (its **Domain / Base URL**, e.g. `jkt.wablas.com`) — sending requests to the wrong domain will fail even with a valid token.
 - Failed sends are logged with a clear reason in `daily_report_reminders.error_message` (e.g. empty phone number, device disconnected) and are automatically retried the next time the reminder job runs — the scheduler and command never crash on a failed send.
-- If you need to switch providers, all provider-specific logic is isolated in `app/Services/WhatsAppService.php` — only that file and the `.env` values need to change.
+- If you need to switch providers again in the future, all provider-specific logic is isolated in `app/Services/WhatsAppService.php` — only that file and the `.env` values need to change.
 
 ---
 
@@ -279,7 +288,6 @@ php artisan test
 
 ## 📁 Project Structure
 
-```
 ├── app/
 │ ├── Console/
 │ │ └── Commands/ # Artisan Commands (incl. daily-report:send-reminders)
@@ -310,7 +318,8 @@ php artisan test
 │ └── api.php # API Routes
 └── storage/
 └── app/public/ # Public File Storage (incl. daily_report_images/)
-```
+
+
 ---
 
 ## 🔧 Configuration
@@ -333,3 +342,50 @@ The application uses multiple PDF libraries:
 ### Excel Import/Export
 
 Uses **Maatwebsite/Excel** for importing/exporting intern data. Templates are located in:
+
+public/templates/
+
+
+### WhatsApp Reminder
+
+See the dedicated [WhatsApp Reminder Setup](#-whatsapp-reminder-setup) section above.
+
+---
+
+## 📓 Daily Report — Feature Overview
+
+| Role | Capability |
+|---|---|
+| **Intern** | Create one Daily Report per day (description, optional photo, optional target completion date, progress status: *Belum Dikerjakan / On Progress / Selesai*), view/edit today's own report, browse a filterable log of past reports |
+| **Pembimbing** | View a monitoring dashboard scoped to their own assigned interns — filter by instansi/date, "Sudah Lapor" vs "Belum Lapor" summary, report detail |
+| **Admin** | Same monitoring dashboard as Pembimbing but across **all** instansi, plus the ability to delete a report |
+
+Daily Report status is also surfaced on the intern's own **Kalender → Tugas** view — any date with a submitted report shows a "Report terkirim" badge (independent of whether a task exists on that date), linking straight to the report detail.
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## 📝 License
+
+This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+---
+
+## 👨‍💻 Development Team
+
+**Direktorat Sistem Informasi (DSI)**
+
+---
+
+<p align="center">
+  Made with ❤️ using Laravel, Livewire, and TailwindCSS
+</p>
